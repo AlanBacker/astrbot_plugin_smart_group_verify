@@ -1,0 +1,65 @@
+{
+  "default_provider_id": {
+    "description": "默认审查模型",
+    "type": "string",
+    "_special": "select_provider",
+    "default": "",
+    "hint": "从 AstrBot Providers 中选择聊天模型。入群审查通常只需要便宜、响应快的小模型；WebUI 中可为单个群覆盖此选择。"
+  },
+  "webui_host": {
+    "description": "WebUI 监听 IP",
+    "type": "string",
+    "default": "0.0.0.0",
+    "hint": "独立管理 WebUI 的监听地址。0.0.0.0 表示监听所有网卡。"
+  },
+  "webui_port": {
+    "description": "WebUI 端口",
+    "type": "int",
+    "default": 10001,
+    "hint": "独立管理 WebUI 的监听端口。"
+  },
+  "webui_access_token": {
+    "description": "WebUI 访问令牌",
+    "type": "string",
+    "default": "",
+    "hint": "建议填写一段随机长字符串。留空时插件会生成持久化随机令牌，并在 AstrBot 日志中输出本机访问链接。"
+  },
+  "webui_public_url": {
+    "description": "WebUI 对外访问地址",
+    "type": "string",
+    "default": "",
+    "hint": "可选，例如 https://verify.example.com。仅用于日志和 /group_verify_webui 指令展示，不会自动配置反向代理。"
+  },
+  "review_timeout_seconds": {
+    "description": "LLM 审查超时秒数",
+    "type": "int",
+    "default": 30,
+    "hint": "模型调用超过此时间后执行故障策略。"
+  },
+  "failure_policy": {
+    "description": "模型故障策略",
+    "type": "string",
+    "options": [
+      "manual",
+      "reject"
+    ],
+    "labels": [
+      "保留申请，等待人工处理",
+      "自动拒绝"
+    ],
+    "default": "manual",
+    "hint": "推荐保留人工处理，避免模型服务暂时不可用时误拒绝真实成员。"
+  },
+  "default_reject_reason": {
+    "description": "默认拒绝原因",
+    "type": "string",
+    "default": "入群验证未满足本群要求，请阅读群说明后重新申请。",
+    "hint": "当模型未提供适合展示的原因或故障策略为自动拒绝时使用。"
+  },
+  "max_audit_logs": {
+    "description": "审计日志保留条数",
+    "type": "int",
+    "default": 500,
+    "hint": "WebUI 中保留的最近审查记录数量。"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "display_name": "Smart Group Join Verification",
+    "short_desc": "Review QQ group join messages with a small LLM.",
+    "desc": "Use an AstrBot LLM provider to approve or reject OneBot v11 QQ group join requests according to per-group rules."
+  },
+  "config": {
+    "default_provider_id": {
+      "description": "Default review model",
+      "hint": "Choose a chat provider configured in AstrBot. A cheap, responsive small model is usually sufficient."
+    },
+    "webui_host": {
+      "description": "WebUI listen IP"
+    },
+    "webui_port": {
+      "description": "WebUI port"
+    },
+    "webui_access_token": {
+      "description": "WebUI access token"
+    },
+    "webui_public_url": {
+      "description": "Public WebUI URL"
+    },
+    "review_timeout_seconds": {
+      "description": "LLM review timeout in seconds"
+    },
+    "failure_policy": {
+      "description": "Provider failure policy",
+      "labels": [
+        "Leave pending for manual review",
+        "Reject automatically"
+      ]
+    },
+    "default_reject_reason": {
+      "description": "Default rejection reason"
+    },
+    "max_audit_logs": {
+      "description": "Maximum audit log entries"
+    }
+  }
+}

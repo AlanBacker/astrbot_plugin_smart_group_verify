@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能入群验证审查</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <section id="login-view" class="login-shell">
+      <div class="login-card">
+        <div class="brand-mark">审</div>
+        <p class="eyebrow">AstrBot Plugin</p>
+        <h1>智能入群验证审查</h1>
+        <p class="muted">输入管理令牌后配置 QQ 群规则。令牌可在 AstrBot 日志或管理员指令中找到。</p>
+        <form id="login-form">
+          <label for="login-token">访问令牌</label>
+          <input id="login-token" type="password" autocomplete="current-password" placeholder="请输入访问令牌" required />
+          <button class="button primary wide" type="submit">进入管理台</button>
+          <p id="login-error" class="form-error"></p>
+        </form>
+      </div>
+    </section>
+
+    <div id="app-view" class="app-shell hidden">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark small">审</div>
+          <div>
+            <p class="eyebrow">AlanBacker · AstrBot Plugin</p>
+            <h1>智能入群验证审查</h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill"><span class="status-dot"></span>服务在线</span>
+          <button id="logout-button" class="button ghost">退出</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero panel">
+          <div>
+            <p class="eyebrow">QQ Group Gatekeeper</p>
+            <h2>让每个群拥有自己的入群判断标准</h2>
+            <p class="muted">规则作为约束交给 LLM。满足规则自动通过，其余申请自动拒绝；模型故障时按 AstrBot 插件配置执行故障策略。</p>
+          </div>
+          <div class="hero-badge">OneBot v11</div>
+        </section>
+
+        <section id="metrics" class="metric-grid"></section>
+
+        <nav class="tabs">
+          <button class="tab active" data-tab="groups">群规则</button>
+          <button class="tab" data-tab="audits">审计记录</button>
+          <button class="tab" data-tab="guide">使用提示</button>
+        </nav>
+
+        <section id="groups-tab" class="tab-panel">
+          <div class="panel provider-panel">
+            <div>
+              <p class="eyebrow">Default Provider</p>
+              <h3>WebUI 全局审查模型</h3>
+              <p class="muted">优先使用便宜、响应快的小模型。单个群可在编辑时覆盖此选择；留空时回退到 AstrBot 插件配置和 AstrBot 默认聊天模型。</p>
+            </div>
+            <div class="inline-control">
+              <select id="global-provider"></select>
+              <button id="save-global-provider" class="button primary">保存模型</button>
+            </div>
+          </div>
+
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Managed Groups</p>
+              <h3>群规则管理</h3>
+            </div>
+            <button id="add-group" class="button primary">添加群</button>
+          </div>
+          <div id="group-list" class="group-grid"></div>
+        </section>
+
+        <section id="audits-tab" class="tab-panel hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Recent Decisions</p>
+              <h3>最近审查记录</h3>
+            </div>
+            <button id="clear-audits" class="button danger">清空记录</button>
+          </div>
+          <div class="panel table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>群号</th>
+                  <th>申请 QQ</th>
+                  <th>验证消息</th>
+                  <th>结果</th>
+                  <th>原因</th>
+                </tr>
+              </thead>
+              <tbody id="audit-list"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="guide-tab" class="tab-panel hidden">
+          <div class="guide-grid">
+            <article class="panel guide-card">
+              <span>01</span>
+              <h3>连接 OneBot v11</h3>
+              <p>该插件面向 AstrBot 的 <code>aiocqhttp</code> 平台。确认 QQ 协议端会向 AstrBot 推送群申请事件。</p>
+            </article>
+            <article class="panel guide-card">
+              <span>02</span>
+              <h3>授予 Bot 权限</h3>
+              <p>Bot 必须是目标群的群主或管理员。插件会在调用模型前检查权限，权限不足时保留人工处理。</p>
+            </article>
+            <article class="panel guide-card">
+              <span>03</span>
+              <h3>先模拟再启用</h3>
+              <p>添加群规则后，在编辑面板使用模拟审查。建议覆盖常见答案、边缘答案和明显不符合的答案。</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="group-dialog">
+      <form id="group-form" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Group Policy</p>
+            <h2 id="dialog-title">添加群</h2>
+          </div>
+          <button id="close-dialog" class="icon-button" type="button" aria-label="关闭">×</button>
+        </div>
+
+        <div class="form-grid">
+          <label>群号<input id="group-id" inputmode="numeric" placeholder="例如 114514" required /></label>
+          <label>群名称<input id="group-name" placeholder="便于识别，可留空" /></label>
+          <label class="full">单群模型覆盖<select id="group-provider"></select></label>
+          <label class="full">
+            拒绝原因
+            <span class="field-hint">可留空。留空时由 LLM 生成简短原因，且不会泄露规则答案或内部判断细节。</span>
+            <input id="reject-reason" maxlength="100" placeholder="可选：填写固定的拒绝提示" />
+          </label>
+          <label class="full">补充说明<textarea id="extra-prompt" rows="3" placeholder="可选：向模型补充群用途、边界条件等"></textarea></label>
+          <label class="checkbox-line full"><input id="group-enabled" type="checkbox" checked />启用该群自动审查</label>
+        </div>
+
+        <div class="rules-heading">
+          <div>
+            <h3>判断规则</h3>
+            <p class="muted">用自然语言写清楚什么情况下通过。信息不足时模型会拒绝。</p>
+          </div>
+          <button id="add-rule" class="button secondary" type="button">添加规则</button>
+        </div>
+        <div id="rule-list" class="rule-list"></div>
+
+        <div class="test-box">
+          <div>
+            <h3>模拟审查</h3>
+            <p class="muted">保存群配置后，可用实际模型检查规则效果，不会操作 QQ 群申请。</p>
+          </div>
+          <textarea id="test-answer" rows="2" placeholder="例如：同意群规，会遵守群内交流规范"></textarea>
+          <div class="test-actions">
+            <button id="run-test" class="button secondary" type="button">运行模拟审查</button>
+            <pre id="test-result">等待测试</pre>
+          </div>
+        </div>
+
+        <p id="form-error" class="form-error"></p>
+        <div class="dialog-actions">
+          <button id="delete-group" class="button danger hidden" type="button">删除群</button>
+          <span></span>
+          <button id="cancel-dialog" class="button ghost" type="button">取消</button>
+          <button class="button primary" type="submit">保存群配置</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
