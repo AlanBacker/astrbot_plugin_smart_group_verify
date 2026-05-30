@@ -123,6 +123,26 @@ class RuleStoreTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(deleted)
             self.assertIsNone(await store.get_group("114514"))
 
+    async def test_group_id_can_be_renamed_without_overwriting_another_group(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = RuleStore(Path(temp_dir))
+            await store.upsert_group({"group_id": "114514", "rules": []})
+            await store.upsert_group({"group_id": "1919810", "rules": []})
+
+            renamed = await store.upsert_group(
+                {"group_id": "114515", "group_name": "已迁移", "rules": []},
+                original_group_id="114514",
+            )
+            self.assertEqual(renamed["group_id"], "114515")
+            self.assertIsNone(await store.get_group("114514"))
+            self.assertEqual((await store.get_group("114515"))["group_name"], "已迁移")
+
+            with self.assertRaises(ValidationError):
+                await store.upsert_group(
+                    {"group_id": "1919810", "rules": []},
+                    original_group_id="114515",
+                )
+
     async def test_backup_failure_is_reported(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             warnings = []

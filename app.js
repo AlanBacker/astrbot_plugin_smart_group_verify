@@ -1,4 +1,4 @@
-const state = { token: "", settings: { groups: [] }, providers: [], audits: [], editing: null };
+const state = { token: "", settings: { groups: [] }, providers: [], audits: [], editing: null, editingOriginalGroupId: "" };
 const $ = (selector) => document.querySelector(selector);
 
 function escapeHtml(value) {
@@ -134,13 +134,14 @@ function newRule() {
 
 function openGroupDialog(groupId = "") {
   const existing = state.settings.groups.find((group) => group.group_id === groupId);
+  state.editingOriginalGroupId = existing ? existing.group_id : "";
   state.editing = existing ? structuredClone(existing) : {
     group_id: "", group_name: "", enabled: true, provider_id: "",
     reject_reason: "", extra_prompt: "", rules: [newRule()],
   };
   $("#dialog-title").textContent = existing ? "编辑群规则" : "添加群";
   $("#group-id").value = state.editing.group_id;
-  $("#group-id").disabled = Boolean(existing);
+  $("#group-id").disabled = false;
   $("#group-name").value = state.editing.group_name;
   $("#group-enabled").checked = state.editing.enabled;
   $("#group-provider").innerHTML = providerOptions(state.editing.provider_id);
@@ -199,8 +200,8 @@ async function saveGroup(event) {
   event.preventDefault();
   try {
     const group = collectEditingGroup();
-    await api(`/api/groups${state.editing.group_id ? `/${encodeURIComponent(state.editing.group_id)}` : ""}`, {
-      method: state.editing.group_id ? "PUT" : "POST",
+    await api(`/api/groups${state.editingOriginalGroupId ? `/${encodeURIComponent(state.editingOriginalGroupId)}` : ""}`, {
+      method: state.editingOriginalGroupId ? "PUT" : "POST",
       body: JSON.stringify(group),
     });
     $("#group-dialog").close();
@@ -212,8 +213,8 @@ async function saveGroup(event) {
 }
 
 async function deleteGroup() {
-  if (!state.editing.group_id || !confirm(`确定删除群 ${state.editing.group_id} 的配置吗？`)) return;
-  await api(`/api/groups/${encodeURIComponent(state.editing.group_id)}`, { method: "DELETE" });
+  if (!state.editingOriginalGroupId || !confirm(`确定删除群 ${state.editingOriginalGroupId} 的配置吗？`)) return;
+  await api(`/api/groups/${encodeURIComponent(state.editingOriginalGroupId)}`, { method: "DELETE" });
   $("#group-dialog").close();
   await bootstrap();
   toast("群配置已删除");

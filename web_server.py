@@ -238,10 +238,13 @@ class WebAdminServer:
     async def _upsert_group(self, request: web.Request) -> web.Response:
         body = await request.json()
         route_group_id = request.match_info.get("group_id")
-        if route_group_id:
+        if route_group_id and not str(body.get("group_id", "")).strip():
             body["group_id"] = route_group_id
         self._validate_provider_id(body.get("provider_id", ""))
-        group = await self.store.upsert_group(body)
+        group = await self.store.upsert_group(
+            body,
+            original_group_id=route_group_id,
+        )
         return web.json_response({"group": group})
 
     async def _delete_group(self, request: web.Request) -> web.Response:

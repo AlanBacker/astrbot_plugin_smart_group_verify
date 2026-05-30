@@ -312,10 +312,40 @@ class RuleStore:
                     return json.loads(json.dumps(group, ensure_ascii=False))
         return None
 
-    async def upsert_group(self, raw: Any) -> dict[str, Any]:
+    async def upsert_group(
+        self,
+        raw: Any,
+        original_group_id: str | None = None,
+    ) -> dict[str, Any]:
         group = normalize_group(raw)
+        if original_group_id is not None:
+            original_group_id = _clean_group_id(original_group_id)
         async with self._lock:
             groups = self._settings["groups"]
+            if original_group_id is not None:
+                original_index = next(
+                    (
+                        index
+                        for index, current in enumerate(groups)
+                        if current["group_id"] == original_group_id
+                    ),
+                    None,
+                )
+                if original_index is None:
+                    raise ValidationError("没有找到要修改的群配置")
+                if any(
+                    current["group_id"] == group["group_id"]
+                    for index, current in enumerate(groups)
+                    if index != original_index
+                ):
+                    raise ValidationError("群号已存在")
+                groups[original_index] = group
+                await asyncio.to_thread(
+                    self._write_json,
+                    self.settings_path,
+                    self._settings,
+                )
+                return json.loads(json.dumps(group, ensure_ascii=False))
             for index, current in enumerate(groups):
                 if current["group_id"] == group["group_id"]:
                     groups[index] = group

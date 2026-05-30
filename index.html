@@ -139,7 +139,11 @@
         </div>
 
         <div class="form-grid">
-          <label>群号<input id="group-id" inputmode="numeric" placeholder="例如 114514" required /></label>
+          <label>
+            群号
+            <span class="field-hint">创建后仍可修改；保存时会迁移现有规则。</span>
+            <input id="group-id" inputmode="numeric" placeholder="例如 114514" required />
+          </label>
           <label>群名称<input id="group-name" placeholder="便于识别，可留空" /></label>
           <label class="full">单群模型覆盖<select id="group-provider"></select></label>
           <label class="full">
