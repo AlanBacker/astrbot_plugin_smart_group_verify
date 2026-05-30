@@ -155,7 +155,11 @@ def parse_llm_decision(raw_response: str) -> ReviewDecision:
     matched_rules = payload.get("matched_rules", [])
     if not isinstance(matched_rules, list):
         matched_rules = []
-    matched_rules = [str(item).strip()[:80] for item in matched_rules if str(item).strip()]
+    matched_rules = [
+        item.strip()[:80]
+        for item in matched_rules
+        if isinstance(item, str) and item.strip()
+    ]
     try:
         confidence = float(payload.get("confidence", 0))
     except (TypeError, ValueError):

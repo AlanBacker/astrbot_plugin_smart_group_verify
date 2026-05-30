@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import secrets
 import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -44,7 +45,7 @@ class SmartGroupVerificationPlugin(Star):
         )
         self._request_lock = asyncio.Lock()
         self._inflight_flags: set[str] = set()
-        self._processed_flags: dict[str, float] = {}
+        self._processed_flags: OrderedDict[str, float] = OrderedDict()
         self._webui_start_task: asyncio.Task[None] | None = None
         webui_dirs = self._webui_static_dirs()
         self.web_server = WebAdminServer(
@@ -373,11 +374,11 @@ class SmartGroupVerificationPlugin(Star):
     async def _reserve_flag(self, flag: str) -> bool:
         async with self._request_lock:
             now = time.monotonic()
-            self._processed_flags = {
-                key: created_at
-                for key, created_at in self._processed_flags.items()
-                if now - created_at < PROCESSED_FLAG_TTL_SECONDS
-            }
+            while self._processed_flags:
+                _, created_at = next(iter(self._processed_flags.items()))
+                if now - created_at < PROCESSED_FLAG_TTL_SECONDS:
+                    break
+                self._processed_flags.popitem(last=False)
             if flag in self._inflight_flags or flag in self._processed_flags:
                 return False
             self._inflight_flags.add(flag)

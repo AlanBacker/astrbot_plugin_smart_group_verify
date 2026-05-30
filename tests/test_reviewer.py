@@ -32,6 +32,13 @@ class ReviewerTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             parse_llm_decision('{"approve": "yes"}')
 
+    def test_parse_ignores_non_string_matched_rules(self):
+        decision = parse_llm_decision(
+            '{"approve": true, "matched_rules": '
+            '["同意群规", false, 0, {"name": "幻觉"}, " "]}'
+        )
+        self.assertEqual(decision.matched_rules, ["同意群规"])
+
     def test_parse_rejects_extra_text_or_multiple_code_blocks(self):
         with self.assertRaises(ValidationError):
             parse_llm_decision('结果如下：{"approve": true}')

@@ -1,18 +1,16 @@
 import asyncio
+import importlib
 import importlib.util
 import sys
 import types
 import unittest
+from collections import OrderedDict
 from pathlib import Path
+from unittest.mock import patch
 
 PACKAGE_NAME = "astrbot_plugin_smart_group_verify"
 PACKAGE_DIR = Path(__file__).parents[1]
 PACKAGE_ROOT = PACKAGE_DIR.parent
-sys.path.insert(0, str(PACKAGE_ROOT))
-if importlib.util.find_spec(PACKAGE_NAME) is None:
-    package = types.ModuleType(PACKAGE_NAME)
-    package.__path__ = [str(PACKAGE_DIR)]
-    sys.modules[PACKAGE_NAME] = package
 
 
 class DummyLogger:
@@ -50,25 +48,30 @@ astrbot_star.Star = type("Star", (), {"__init__": lambda self, context: setattr(
 astrbot_star.StarTools = type("StarTools", (), {"get_data_dir": lambda plugin_name=None: Path(".")})
 astrbot_path.get_astrbot_data_path = lambda: "."
 astrbot_path.get_astrbot_plugin_path = lambda: "./plugins"
-sys.modules.update(
-    {
-        "astrbot": astrbot,
-        "astrbot.api": astrbot_api,
-        "astrbot.api.event": astrbot_event,
-        "astrbot.api.star": astrbot_star,
-        "astrbot.core": astrbot_core,
-        "astrbot.core.utils": astrbot_utils,
-        "astrbot.core.utils.astrbot_path": astrbot_path,
-    }
-)
-
 web_server_stub = types.ModuleType("astrbot_plugin_smart_group_verify.web_server")
 web_server_stub.WebAdminServer = object
-sys.modules["astrbot_plugin_smart_group_verify.web_server"] = web_server_stub
 
-from astrbot_plugin_smart_group_verify.main import (  # noqa: E402
-    SmartGroupVerificationPlugin,
-)
+mock_modules = {
+    "astrbot": astrbot,
+    "astrbot.api": astrbot_api,
+    "astrbot.api.event": astrbot_event,
+    "astrbot.api.star": astrbot_star,
+    "astrbot.core": astrbot_core,
+    "astrbot.core.utils": astrbot_utils,
+    "astrbot.core.utils.astrbot_path": astrbot_path,
+    "astrbot_plugin_smart_group_verify.web_server": web_server_stub,
+}
+sys.path.insert(0, str(PACKAGE_ROOT))
+try:
+    with patch.dict(sys.modules, mock_modules):
+        if importlib.util.find_spec(PACKAGE_NAME) is None:
+            package = types.ModuleType(PACKAGE_NAME)
+            package.__path__ = [str(PACKAGE_DIR)]
+            sys.modules[PACKAGE_NAME] = package
+        plugin_main = importlib.import_module(f"{PACKAGE_NAME}.main")
+        SmartGroupVerificationPlugin = plugin_main.SmartGroupVerificationPlugin
+finally:
+    sys.path.remove(str(PACKAGE_ROOT))
 
 
 class FakeBot:
@@ -119,11 +122,26 @@ class PluginLogicTests(unittest.IsolatedAsyncioTestCase):
         plugin = object.__new__(SmartGroupVerificationPlugin)
         plugin._request_lock = asyncio.Lock()
         plugin._inflight_flags = set()
-        plugin._processed_flags = {}
+        plugin._processed_flags = OrderedDict()
         self.assertTrue(await plugin._reserve_flag("flag-1"))
         self.assertFalse(await plugin._reserve_flag("flag-1"))
         await plugin._release_flag("flag-1", processed=True)
         self.assertFalse(await plugin._reserve_flag("flag-1"))
+
+    async def test_request_flag_cleanup_stops_at_first_active_entry(self):
+        plugin = object.__new__(SmartGroupVerificationPlugin)
+        plugin._request_lock = asyncio.Lock()
+        plugin._inflight_flags = set()
+        plugin._processed_flags = OrderedDict(
+            [
+                ("expired-1", 1.0),
+                ("expired-2", 2.0),
+                ("active", 999.0),
+            ]
+        )
+        with patch.object(plugin_main.time, "monotonic", return_value=1000.0):
+            self.assertTrue(await plugin._reserve_flag("fresh"))
+        self.assertEqual(list(plugin._processed_flags), ["active"])
 
     async def test_bot_role_uses_group_member_info(self):
         bot = FakeBot()
