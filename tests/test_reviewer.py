@@ -60,6 +60,12 @@ class ReviewerTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             normalize_group({"group_id": "group-a", "rules": []})
 
+    def test_normalize_group_rejects_false_and_zero_group_ids(self):
+        for group_id in (False, 0):
+            with self.subTest(group_id=group_id):
+                with self.assertRaises(ValidationError):
+                    normalize_group({"group_id": group_id, "rules": []})
+
     def test_prompt_marks_applicant_answer_as_untrusted_data(self):
         group = normalize_group(
             {

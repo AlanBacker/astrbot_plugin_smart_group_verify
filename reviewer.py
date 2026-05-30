@@ -58,9 +58,9 @@ def _clean_string(value: Any, field: str, max_length: int, default: str = "") ->
 
 
 def _clean_group_id(value: Any) -> str:
-    group_id = _clean_string(str(value or ""), "群号", 20)
-    if not group_id or not group_id.isdigit():
-        raise ValidationError("群号必须是纯数字")
+    group_id = _clean_string(str(value) if value is not None else "", "群号", 20)
+    if not group_id.isdigit() or int(group_id) <= 0:
+        raise ValidationError("群号必须是正整数")
     return group_id
 
 

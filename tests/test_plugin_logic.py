@@ -70,6 +70,7 @@ try:
             sys.modules[PACKAGE_NAME] = package
         plugin_main = importlib.import_module(f"{PACKAGE_NAME}.main")
         SmartGroupVerificationPlugin = plugin_main.SmartGroupVerificationPlugin
+        ValidationError = plugin_main.ValidationError
 finally:
     sys.path.remove(str(PACKAGE_ROOT))
 
@@ -109,6 +110,17 @@ class PluginLogicTests(unittest.IsolatedAsyncioTestCase):
                     "request_type": "group",
                     "sub_type": "add",
                 }
+            )
+        )
+        self.assertFalse(
+            SmartGroupVerificationPlugin._is_group_join_request(
+                types.SimpleNamespace(
+                    get=lambda key: {
+                        "post_type": "request",
+                        "request_type": "group",
+                        "sub_type": "add",
+                    }.get(key)
+                )
             )
         )
 
@@ -162,6 +174,16 @@ class PluginLogicTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(role, "admin")
         self.assertEqual(bot.calls[0][0], "get_group_member_info")
+
+    def test_onebot_ids_must_be_positive_integers(self):
+        self.assertEqual(
+            SmartGroupVerificationPlugin._parse_onebot_id("114514", "群号"),
+            114514,
+        )
+        for value in ("", "not-a-number", "0", "-1", None):
+            with self.subTest(value=value):
+                with self.assertRaises(ValidationError):
+                    SmartGroupVerificationPlugin._parse_onebot_id(value, "群号")
 
     async def test_failure_rejection_separates_user_reason_from_internal_error(self):
         bot = FakeBot()

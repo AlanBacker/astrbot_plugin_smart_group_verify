@@ -101,7 +101,15 @@ class WebAdminServer:
             raise
         except Exception as exc:
             logger.exception("WebUI request failed: %s", exc)
-            return web.json_response({"error": "服务异常，请查看 AstrBot 日志"}, status=500)
+            return web.json_response(
+                {
+                    "error": (
+                        "服务异常，请稍后重试。若问题持续存在，请检查 AstrBot 日志"
+                        "并访问 /api/health 查看 WebUI 状态。"
+                    )
+                },
+                status=500,
+            )
 
     @web.middleware
     async def _auth_middleware(
@@ -129,18 +137,27 @@ class WebAdminServer:
 
     def _static_status(self) -> dict[str, Any]:
         required_files = ("index.html", "app.js", "style.css")
+        resolved_files = {
+            name: self._resolve_static_file(name)
+            for name in required_files
+        }
         missing = [
-            name for name in required_files if self._resolve_static_file(name) is None
+            name for name, file_path in resolved_files.items() if file_path is None
         ]
-        available_dirs = [
-            str(static_dir)
-            for static_dir in self.static_dirs
-            if static_dir.is_dir()
-        ]
+        resolved_paths = {
+            name: str(file_path)
+            for name, file_path in resolved_files.items()
+            if file_path is not None
+        }
+        resolved_dirs = list(
+            dict.fromkeys(str(file_path.parent) for file_path in resolved_files.values() if file_path)
+        )
         return {
             "ready": not missing,
             "missing": missing,
-            "static_dir": available_dirs[0] if available_dirs else "",
+            "static_dir": resolved_dirs[0] if len(resolved_dirs) == 1 else "",
+            "resolved_dirs": resolved_dirs,
+            "resolved_files": resolved_paths,
             "searched_dirs": [str(static_dir) for static_dir in self.static_dirs],
         }
 

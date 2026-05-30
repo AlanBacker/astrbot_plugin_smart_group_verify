@@ -332,7 +332,7 @@ class SmartGroupVerificationPlugin(Star):
     @staticmethod
     def _is_group_join_request(raw: Any) -> bool:
         return bool(
-            hasattr(raw, "get")
+            isinstance(raw, dict)
             and raw.get("post_type") == "request"
             and raw.get("request_type") == "group"
             and raw.get("sub_type") == "add"
@@ -342,11 +342,18 @@ class SmartGroupVerificationPlugin(Star):
         result = await self._call_action(
             bot,
             "get_group_member_info",
-            group_id=int(group_id),
-            user_id=int(bot_id),
+            group_id=self._parse_onebot_id(group_id, "群号"),
+            user_id=self._parse_onebot_id(bot_id, "Bot QQ"),
             no_cache=False,
         )
         return str(result.get("role", "member"))
+
+    @staticmethod
+    def _parse_onebot_id(value: Any, field: str) -> int:
+        text = str(value).strip() if value is not None else ""
+        if not text.isdigit() or int(text) <= 0:
+            raise ValidationError(f"{field} 必须是正整数")
+        return int(text)
 
     async def _set_group_add_request(
         self,
