@@ -40,6 +40,7 @@ class SmartGroupVerificationPlugin(Star):
         self.store = RuleStore(
             self.data_dir,
             max_audit_logs=int(self.config.get("max_audit_logs", 500)),
+            warning_logger=lambda message: logger.warning(f"[{PLUGIN_NAME}] {message}"),
         )
         self._request_lock = asyncio.Lock()
         self._inflight_flags: set[str] = set()
@@ -423,11 +424,7 @@ class SmartGroupVerificationPlugin(Star):
             legacy_plugin_dir,
             legacy_plugin_dir / "webui",
         ]
-        unique_candidates: list[Path] = []
-        for candidate in candidates:
-            if candidate not in unique_candidates:
-                unique_candidates.append(candidate)
-        return unique_candidates
+        return list(dict.fromkeys(candidates))
 
     def _webui_url(self, *, include_token: bool) -> str:
         public_url = str(self.config.get("webui_public_url", "")).strip().rstrip("/")

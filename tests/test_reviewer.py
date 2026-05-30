@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from sys import path
+from unittest.mock import patch
 
 path.insert(0, str(Path(__file__).parents[1]))
 
@@ -30,6 +31,15 @@ class ReviewerTests(unittest.TestCase):
     def test_parse_invalid_decision(self):
         with self.assertRaises(ValidationError):
             parse_llm_decision('{"approve": "yes"}')
+
+    def test_parse_rejects_extra_text_or_multiple_code_blocks(self):
+        with self.assertRaises(ValidationError):
+            parse_llm_decision('结果如下：{"approve": true}')
+        with self.assertRaises(ValidationError):
+            parse_llm_decision(
+                '```json\n{"approve": true}\n```\n'
+                '```json\n{"approve": false}\n```'
+            )
 
     def test_normalize_group_requires_numeric_group_id(self):
         with self.assertRaises(ValidationError):
@@ -91,3 +101,14 @@ class RuleStoreTests(unittest.IsolatedAsyncioTestCase):
             deleted = await store.delete_group("114514")
             self.assertTrue(deleted)
             self.assertIsNone(await store.get_group("114514"))
+
+    async def test_backup_failure_is_reported(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            warnings = []
+            store = RuleStore(Path(temp_dir), warning_logger=warnings.append)
+            broken = Path(temp_dir) / "broken.json"
+            broken.write_text("broken", encoding="utf-8")
+            with patch.object(Path, "replace", side_effect=OSError("denied")):
+                store._backup_broken_file(broken)
+            self.assertEqual(len(warnings), 1)
+            self.assertIn("无法备份损坏的存储文件", warnings[0])

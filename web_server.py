@@ -144,7 +144,13 @@ class WebAdminServer:
             "searched_dirs": [str(static_dir) for static_dir in self.static_dirs],
         }
 
-    async def _text_file(self, name: str, content_type: str) -> web.Response:
+    async def _text_file(
+        self,
+        name: str,
+        content_type: str,
+        *,
+        cache_control: str,
+    ) -> web.Response:
         file_path = self._resolve_static_file(name)
         if file_path is None:
             status = self._static_status()
@@ -163,16 +169,29 @@ class WebAdminServer:
         return web.Response(
             text=file_path.read_text(encoding="utf-8"),
             content_type=content_type,
+            headers={"Cache-Control": cache_control},
         )
 
     async def _index(self, _: web.Request) -> web.Response:
-        return await self._text_file("index.html", "text/html")
+        return await self._text_file(
+            "index.html",
+            "text/html",
+            cache_control="no-cache",
+        )
 
     async def _app_js(self, _: web.Request) -> web.Response:
-        return await self._text_file("app.js", "application/javascript")
+        return await self._text_file(
+            "app.js",
+            "application/javascript",
+            cache_control="public, max-age=300, must-revalidate",
+        )
 
     async def _style_css(self, _: web.Request) -> web.Response:
-        return await self._text_file("style.css", "text/css")
+        return await self._text_file(
+            "style.css",
+            "text/css",
+            cache_control="public, max-age=300, must-revalidate",
+        )
 
     async def _health(self, _: web.Request) -> web.Response:
         return web.json_response(

@@ -6,6 +6,7 @@ import os
 import re
 import tempfile
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -136,19 +137,15 @@ def parse_llm_decision(raw_response: str) -> ReviewDecision:
     if not isinstance(raw_response, str) or not raw_response.strip():
         raise ValidationError("模型没有返回内容")
     text = raw_response.strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
     if fenced:
         text = fenced.group(1)
-    else:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start < 0 or end <= start:
-            raise ValidationError("模型返回内容中没有 JSON 对象")
-        text = text[start : end + 1]
     try:
-        payload = json.loads(text)
+        payload, end = json.JSONDecoder().raw_decode(text)
     except json.JSONDecodeError as exc:
         raise ValidationError("模型返回的 JSON 无法解析") from exc
+    if text[end:].strip():
+        raise ValidationError("模型返回内容包含 JSON 之外的额外文本")
     if not isinstance(payload, dict) or not isinstance(payload.get("approve"), bool):
         raise ValidationError("模型返回 JSON 必须包含布尔值 approve")
     reason = payload.get("reason", "")
@@ -223,11 +220,17 @@ QQ：{user_id}
 class RuleStore:
     """Small JSON store for group rules and recent audit entries."""
 
-    def __init__(self, data_dir: Path, max_audit_logs: int = 500) -> None:
+    def __init__(
+        self,
+        data_dir: Path,
+        max_audit_logs: int = 500,
+        warning_logger: Callable[[str], None] | None = None,
+    ) -> None:
         self.data_dir = data_dir
         self.settings_path = data_dir / "settings.json"
         self.audit_path = data_dir / "audit.json"
         self.max_audit_logs = max(10, min(int(max_audit_logs), 5000))
+        self._warning_logger = warning_logger
         self._lock = asyncio.Lock()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._settings = self._load_settings()
@@ -257,15 +260,15 @@ class RuleStore:
             self._backup_broken_file(self.audit_path)
             return []
 
-    @staticmethod
-    def _backup_broken_file(path: Path) -> None:
+    def _backup_broken_file(self, path: Path) -> None:
         if not path.exists():
             return
         backup = path.with_suffix(f"{path.suffix}.broken-{uuid.uuid4().hex[:8]}")
         try:
             path.replace(backup)
-        except OSError:
-            pass
+        except OSError as exc:
+            if self._warning_logger:
+                self._warning_logger(f"无法备份损坏的存储文件 {path}: {exc}")
 
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
