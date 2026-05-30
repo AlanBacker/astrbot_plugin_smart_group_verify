@@ -137,9 +137,15 @@ def parse_llm_decision(raw_response: str) -> ReviewDecision:
     if not isinstance(raw_response, str) or not raw_response.strip():
         raise ValidationError("模型没有返回内容")
     text = raw_response.strip()
-    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
-    if fenced:
-        text = fenced.group(1)
+    fenced_blocks = re.findall(
+        r"```(?:json)?\s*(.*?)\s*```",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if len(fenced_blocks) > 1:
+        raise ValidationError("模型返回内容包含多个代码块")
+    if fenced_blocks:
+        text = fenced_blocks[0]
     try:
         payload, end = json.JSONDecoder().raw_decode(text)
     except json.JSONDecodeError as exc:

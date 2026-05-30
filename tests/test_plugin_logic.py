@@ -83,6 +83,14 @@ class FakeBot:
         return {"role": "admin"}
 
 
+class FakeStore:
+    def __init__(self):
+        self.audits = []
+
+    async def add_audit(self, entry):
+        self.audits.append(entry)
+
+
 class PluginLogicTests(unittest.IsolatedAsyncioTestCase):
     def test_detects_only_group_add_requests(self):
         self.assertTrue(
@@ -154,3 +162,22 @@ class PluginLogicTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(role, "admin")
         self.assertEqual(bot.calls[0][0], "get_group_member_info")
+
+    async def test_failure_rejection_separates_user_reason_from_internal_error(self):
+        bot = FakeBot()
+        plugin = object.__new__(SmartGroupVerificationPlugin)
+        plugin.config = {
+            "failure_policy": "reject",
+            "default_reject_reason": "系统繁忙，请稍后重新申请。",
+        }
+        plugin.store = FakeStore()
+        processed = await plugin._handle_failure(
+            bot,
+            "request-flag",
+            {"group_id": "114514", "user_id": "1919810"},
+            RuntimeError("provider unavailable"),
+        )
+        self.assertTrue(processed)
+        self.assertEqual(bot.calls[0][1]["reason"], "系统繁忙，请稍后重新申请。")
+        self.assertEqual(plugin.store.audits[0]["reason"], "系统繁忙，请稍后重新申请。")
+        self.assertIn("provider unavailable", plugin.store.audits[0]["error"])

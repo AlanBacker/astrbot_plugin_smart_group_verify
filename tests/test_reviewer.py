@@ -28,6 +28,14 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(decision.matched_rules, ["同意群规"])
         self.assertEqual(decision.confidence, 0.91)
 
+    def test_parse_accepts_one_fenced_decision_surrounded_by_prose(self):
+        decision = parse_llm_decision(
+            '结果如下：\n```json\n{"approve": false, "reason": "请重新申请"}\n```\n'
+            "希望这能帮到您。"
+        )
+        self.assertFalse(decision.approve)
+        self.assertEqual(decision.reason, "请重新申请")
+
     def test_parse_invalid_decision(self):
         with self.assertRaises(ValidationError):
             parse_llm_decision('{"approve": "yes"}')

@@ -121,7 +121,10 @@ class SmartGroupVerificationPlugin(Star):
             self._webui_start_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._webui_start_task
-        await self.web_server.stop()
+        try:
+            await asyncio.wait_for(self.web_server.stop(), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[{PLUGIN_NAME}] WebUI 停止超时，继续卸载插件。")
 
     async def _handle_group_join_request(
         self,
@@ -244,7 +247,8 @@ class SmartGroupVerificationPlugin(Star):
                 {
                     **base_audit,
                     "status": "rejected",
-                    "reason": f"{reason}（模型调用失败）",
+                    "reason": reason,
+                    "error": f"模型调用失败：{exc}",
                 }
             )
             return True
