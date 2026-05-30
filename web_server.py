@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import logging
 import secrets
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
 from aiohttp import web
+from astrbot.api import logger
 
 from .reviewer import RuleStore, ValidationError
 
 ProviderLoader = Callable[[], list[dict[str, Any]]]
 ReviewTester = Callable[[str, str], Awaitable[dict[str, Any]]]
-logger = logging.getLogger(__name__)
 
 
 class WebAdminServer:

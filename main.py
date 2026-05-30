@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
-from astrbot.api.star import Context, Star
+from astrbot.api.star import Context, Star, StarTools
 from astrbot.core.utils.astrbot_path import (
     get_astrbot_data_path,
     get_astrbot_plugin_path,
@@ -35,10 +35,7 @@ class SmartGroupVerificationPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig) -> None:
         super().__init__(context)
         self.config = config
-        self.data_dir = (
-            Path(get_astrbot_data_path()) / "plugin_data" / PLUGIN_NAME
-        )
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = StarTools.get_data_dir(PLUGIN_NAME)
         self.access_token = self._resolve_access_token()
         self.store = RuleStore(
             self.data_dir,

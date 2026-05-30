@@ -7,7 +7,7 @@ import re
 import tempfile
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ class ReviewDecision:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def default_settings() -> dict[str, Any]:

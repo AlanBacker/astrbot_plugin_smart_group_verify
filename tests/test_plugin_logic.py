@@ -47,6 +47,7 @@ astrbot_event.AstrMessageEvent = object
 astrbot_event.filter = DummyFilter()
 astrbot_star.Context = object
 astrbot_star.Star = type("Star", (), {"__init__": lambda self, context: setattr(self, "context", context)})
+astrbot_star.StarTools = type("StarTools", (), {"get_data_dir": lambda plugin_name=None: Path(".")})
 astrbot_path.get_astrbot_data_path = lambda: "."
 astrbot_path.get_astrbot_plugin_path = lambda: "./plugins"
 sys.modules.update(

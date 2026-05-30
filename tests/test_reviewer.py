@@ -12,6 +12,7 @@ from reviewer import (  # noqa: E402
     build_review_prompt,
     normalize_group,
     parse_llm_decision,
+    utc_now_iso,
 )
 
 
@@ -56,6 +57,9 @@ class ReviewerTests(unittest.TestCase):
     def test_group_allows_empty_fixed_reject_reason(self):
         group = normalize_group({"group_id": "114514", "rules": []})
         self.assertEqual(group["reject_reason"], "")
+
+    def test_audit_timestamp_is_utc_in_python_310_compatible_format(self):
+        self.assertTrue(utc_now_iso().endswith("+00:00"))
 
 
 class RuleStoreTests(unittest.IsolatedAsyncioTestCase):
