@@ -36,6 +36,13 @@ class ReviewerTests(unittest.TestCase):
         self.assertFalse(decision.approve)
         self.assertEqual(decision.reason, "请重新申请")
 
+    def test_parse_tolerates_invisible_json_boundary_padding(self):
+        decision = parse_llm_decision(
+            '\ufeff\u200b{"approve": true, "reason": "符合"}\u200b'
+        )
+        self.assertTrue(decision.approve)
+        self.assertEqual(decision.reason, "符合")
+
     def test_parse_invalid_decision(self):
         with self.assertRaises(ValidationError):
             parse_llm_decision('{"approve": "yes"}')
