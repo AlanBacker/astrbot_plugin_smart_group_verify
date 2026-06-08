@@ -150,11 +150,7 @@ class WebAdminServer:
             if file_path is not None
         }
         resolved_dirs = list(
-            dict.fromkeys(
-                str(file_path.parent)
-                for file_path in resolved_files.values()
-                if file_path
-            )
+            dict.fromkeys(str(file_path.parent) for file_path in resolved_files.values() if file_path)
         )
         return {
             "ready": not missing,

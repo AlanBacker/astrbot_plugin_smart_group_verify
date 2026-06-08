@@ -16,7 +16,6 @@ PLUGIN_NAME = "astrbot_plugin_smart_group_verify"
 DEFAULT_REJECT_REASON = "申请未通过，请检查入群要求后重新申请。"
 MAX_GROUPS = 500
 MAX_RULES_PER_GROUP = 50
-JSON_BOUNDARY_PADDING = "\ufeff\u200b\u200c\u200d\u2060"
 
 
 class ValidationError(ValueError):
@@ -45,11 +44,6 @@ def default_settings() -> dict[str, Any]:
         "global_provider_id": "",
         "groups": [],
     }
-
-
-def _strip_json_boundary_padding(text: str) -> str:
-    """Strip whitespace and common invisible padding around LLM JSON output."""
-    return text.strip().strip(JSON_BOUNDARY_PADDING).strip()
 
 
 def _clean_string(value: Any, field: str, max_length: int, default: str = "") -> str:
@@ -142,7 +136,7 @@ def normalize_settings(raw: Any) -> dict[str, Any]:
 def parse_llm_decision(raw_response: str) -> ReviewDecision:
     if not isinstance(raw_response, str) or not raw_response.strip():
         raise ValidationError("模型没有返回内容")
-    text = _strip_json_boundary_padding(raw_response)
+    text = raw_response.strip()
     fenced_blocks = re.findall(
         r"```(?:json)?\s*(.*?)\s*```",
         text,
@@ -151,12 +145,12 @@ def parse_llm_decision(raw_response: str) -> ReviewDecision:
     if len(fenced_blocks) > 1:
         raise ValidationError("模型返回内容包含多个代码块")
     if fenced_blocks:
-        text = _strip_json_boundary_padding(fenced_blocks[0])
+        text = fenced_blocks[0]
     try:
         payload, end = json.JSONDecoder().raw_decode(text)
     except json.JSONDecodeError as exc:
         raise ValidationError("模型返回的 JSON 无法解析") from exc
-    if _strip_json_boundary_padding(text[end:]):
+    if text[end:].strip():
         raise ValidationError("模型返回内容包含 JSON 之外的额外文本")
     if not isinstance(payload, dict) or not isinstance(payload.get("approve"), bool):
         raise ValidationError("模型返回 JSON 必须包含布尔值 approve")
